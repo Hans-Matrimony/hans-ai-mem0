@@ -97,19 +97,25 @@ class SearchResponse(BaseModel):
 # =============================================================================
 
 async def initialize_memory() -> None:
-    """Initialize Mem0 with Qdrant backend"""
+    """Initialize Mem0 with Qdrant backend.
+
+    If Qdrant is not available at startup, the service will start anyway
+    and memory operations will return appropriate errors. This allows
+    the container to pass health checks even when Qdrant is temporarily unavailable.
+    """
     global memory_instance
 
     try:
         from qdrant_client import QdrantClient
         from mem0 import Memory
 
-        logger.info(f"Connecting to Qdrant at {QDRANT_URL}")
+        logger.info(f"Attempting to connect to Qdrant at {QDRANT_URL}")
 
-        # Create Qdrant client
+        # Create Qdrant client with timeout
         qdrant_client = QdrantClient(
             url=QDRANT_URL,
-            api_key=QDRANT_API_KEY if QDRANT_API_KEY else None
+            api_key=QDRANT_API_KEY if QDRANT_API_KEY else None,
+            timeout=5.0
         )
 
         # Configure Mem0
@@ -138,8 +144,10 @@ async def initialize_memory() -> None:
         logger.error(f"Missing dependency: {e}")
         raise
     except Exception as e:
-        logger.error(f"Failed to initialize Mem0: {e}")
-        raise
+        logger.warning(f"⚠️ Could not initialize Mem0: {e}")
+        logger.warning("⚠️ Memory service will be unavailable until Qdrant becomes available")
+        logger.warning(f"⚠️ Please ensure QDRANT_URL is set correctly (current: {QDRANT_URL})")
+        # Don't raise - allow the service to start anyway
 
 
 async def close_memory() -> None:
@@ -226,9 +234,11 @@ async def health_check() -> Dict[str, Any]:
     Health check endpoint
 
     Returns the current status of the server and its connections.
+    The service returns 200 even if Qdrant is disconnected, allowing
+    the container to pass health checks with degraded functionality.
     """
     return {
-        "status": "healthy",
+        "status": "healthy" if memory_instance else "degraded",
         "service": "mem0-server",
         "version": "1.0.0",
         "connections": {
