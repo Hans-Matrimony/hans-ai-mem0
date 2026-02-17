@@ -340,10 +340,25 @@ async def search_memory(search: SearchInput) -> SearchResponse:
         formatted_results = []
         if results:
             for r in results:
+                memory_text = ""
+                score = 1.0
+                metadata = {}
+
+                if isinstance(r, dict):
+                    memory_text = r.get("memory", "")
+                    score = r.get("score", 0.0)
+                    metadata = r.get("metadata")
+                elif hasattr(r, "memory"): # It's an object
+                    memory_text = getattr(r, "memory", "")
+                    score = getattr(r, "score", 0.0)
+                    metadata = getattr(r, "metadata", None)
+                elif isinstance(r, str): # It's just a string
+                    memory_text = r
+                
                 formatted_results.append(SearchResult(
-                    memory=r.get("memory", ""),
-                    score=r.get("score", 0.0),
-                    metadata=r.get("metadata")
+                    memory=memory_text,
+                    score=score,
+                    metadata=metadata
                 ))
 
         return SearchResponse(
