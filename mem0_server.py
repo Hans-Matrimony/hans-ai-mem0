@@ -291,7 +291,7 @@ async def add_memory(memory: MemoryInput) -> SuccessResponse:
 
     try:
         result = memory_instance.add(
-            content=memory.content,
+            memory.content,
             user_id=memory.user_id,
             metadata=memory.metadata or {}
         )
@@ -496,7 +496,7 @@ async def add_memories_batch(batch: BatchMemoryInput) -> SuccessResponse:
     for i, memory in enumerate(batch.memories):
         try:
             result = memory_instance.add(
-                content=memory.content,
+                memory.content,
                 user_id=memory.user_id,
                 metadata=memory.metadata or {}
             )
