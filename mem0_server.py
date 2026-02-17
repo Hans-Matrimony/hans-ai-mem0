@@ -169,7 +169,7 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("🚀 Starting Mem0 Server...")
     await initialize_memory()
-    logger.info("✅ Mem0 Server ready!")
+    logger.info("✅ Mem0 Server ready! (Patched Version User-Arg-Fix)")
 
     yield
 
