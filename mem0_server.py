@@ -393,14 +393,22 @@ async def get_memories(
         )
 
     try:
-        memories = memory_instance.get_all(user_id=user_id, limit=limit)
+        raw = memory_instance.get_all(user_id=user_id, limit=limit)
 
-        logger.info(f"Retrieved {len(memories) if memories else 0} memories for user {user_id}")
+        # Newer Mem0 returns {'results': [...]} instead of a plain list
+        if isinstance(raw, dict) and "results" in raw:
+            memories = raw["results"]
+        elif isinstance(raw, list):
+            memories = raw
+        else:
+            memories = []
+
+        logger.info(f"Retrieved {len(memories)} memories for user {user_id}")
 
         return MemoryListResponse(
             success=True,
-            memories=memories or [],
-            count=len(memories) if memories else 0
+            memories=memories,
+            count=len(memories)
         )
 
     except Exception as e:
@@ -457,12 +465,20 @@ async def delete_user_memories(user_id: str) -> SuccessResponse:
 
     try:
         # Get all memories first
-        memories = memory_instance.get_all(user_id=user_id)
+        raw = memory_instance.get_all(user_id=user_id)
+
+        # Newer Mem0 returns {'results': [...]} instead of a plain list
+        if isinstance(raw, dict) and "results" in raw:
+            memories = raw["results"]
+        elif isinstance(raw, list):
+            memories = raw
+        else:
+            memories = []
 
         deleted_count = 0
         if memories:
             for mem in memories:
-                mem_id = mem.get("id")
+                mem_id = mem.get("id") if isinstance(mem, dict) else getattr(mem, "id", None)
                 if mem_id:
                     memory_instance.delete(mem_id)
                     deleted_count += 1
