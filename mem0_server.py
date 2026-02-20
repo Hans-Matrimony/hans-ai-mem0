@@ -393,7 +393,7 @@ async def get_memories(
         )
 
     try:
-        memories = memory_instance.get_all(user_id, limit=limit)
+        memories = memory_instance.get_all(user_id=user_id, limit=limit)
 
         logger.info(f"Retrieved {len(memories) if memories else 0} memories for user {user_id}")
 
@@ -457,7 +457,7 @@ async def delete_user_memories(user_id: str) -> SuccessResponse:
 
     try:
         # Get all memories first
-        memories = memory_instance.get_all(user_id)
+        memories = memory_instance.get_all(user_id=user_id)
 
         deleted_count = 0
         if memories:
