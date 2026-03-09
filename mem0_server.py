@@ -60,8 +60,9 @@ class SearchInput(BaseModel):
 
 class MemoryUpdate(BaseModel):
     """Request model for updating a memory"""
-    content: Optional[str] = Field(None, min_length=1)
-    metadata: Optional[Dict[str, Any]] = None
+    memory_id: str = Field(..., min_length=1, description="Memory ID to update")
+    content: Optional[str] = Field(None, min_length=1, description="New memory content")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="New metadata")
 
 
 class SuccessResponse(BaseModel):
@@ -263,9 +264,11 @@ async def root() -> Dict[str, Any]:
             "docs": "/docs",
             "add_memory": "/memory/add",
             "search_memory": "/memory/search",
+            "update_memory": "/memory/update",
             "get_memories": "/memory/{user_id}",
             "delete_memory": "/memory/{memory_id}",
-            "delete_user_memories": "/memory/user/{user_id}"
+            "delete_user_memories": "/memory/user/{user_id}",
+            "batch_add": "/memory/batch/add"
         }
     }
 
@@ -372,6 +375,47 @@ async def search_memory(search: SearchInput) -> SearchResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to search memory: {str(e)}"
+        )
+
+
+@app.post("/memory/update", response_model=SuccessResponse, tags=["Memory"])
+async def update_memory(update_data: MemoryUpdate) -> SuccessResponse:
+    """
+    Update an existing memory
+
+    - **memory_id**: The ID of the memory to update
+    - **content**: New memory content (optional)
+    - **metadata**: New metadata (optional)
+    """
+    if not memory_instance:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Memory service not initialized"
+        )
+
+    try:
+        # Prepare update parameters
+        update_params = {"memory_id": update_data.memory_id}
+        if update_data.content is not None:
+            update_params["content"] = update_data.content
+        if update_data.metadata is not None:
+            update_params["metadata"] = update_data.metadata
+
+        result = memory_instance.update(**update_params)
+
+        logger.info(f"Memory updated: {update_data.memory_id}")
+
+        return SuccessResponse(
+            success=True,
+            message="Memory updated successfully",
+            data={"memory_id": update_data.memory_id, "result": result}
+        )
+
+    except Exception as e:
+        logger.error(f"Error updating memory: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update memory: {str(e)}"
         )
 
 
