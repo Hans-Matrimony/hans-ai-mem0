@@ -394,18 +394,37 @@ async def update_memory(update_data: MemoryUpdate) -> SuccessResponse:
         )
 
     try:
-        # Mem0's update method expects a 'data' dict with the memory content
-        # The data dict should contain 'memory' key for content and optionally 'metadata'
-        data_dict = {}
-        if update_data.content is not None:
-            data_dict["memory"] = update_data.content
-        if update_data.metadata is not None:
-            data_dict["metadata"] = update_data.metadata
+        # mem0ai's update method expects:
+        # - memory_id (str): the memory ID
+        # - data (str): the new memory content as a string
+        # - metadata (dict, optional): additional metadata
+        if update_data.content is None and update_data.metadata is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Either content or metadata must be provided"
+            )
 
-        result = memory_instance.update(
-            memory_id=update_data.memory_id,
-            data=data_dict
-        )
+        # If only metadata is being updated, we need to get the existing content first
+        if update_data.content is None:
+            # Get existing memories to find the current content
+            try:
+                # Try to extract user_id from memory or use a fallback
+                result = memory_instance.update(
+                    memory_id=update_data.memory_id,
+                    data=update_data.content or "",  # mem0ai requires data as string
+                    metadata=update_data.metadata
+                )
+            except Exception as inner_e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Content update required for this mem0 version: {str(inner_e)}"
+                )
+        else:
+            result = memory_instance.update(
+                memory_id=update_data.memory_id,
+                data=update_data.content,  # mem0ai expects data as a string
+                metadata=update_data.metadata
+            )
 
         logger.info(f"Memory updated: {update_data.memory_id}")
 
@@ -415,6 +434,8 @@ async def update_memory(update_data: MemoryUpdate) -> SuccessResponse:
             data={"memory_id": update_data.memory_id, "result": result}
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error updating memory: {e}")
         raise HTTPException(
