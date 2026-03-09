@@ -394,14 +394,18 @@ async def update_memory(update_data: MemoryUpdate) -> SuccessResponse:
         )
 
     try:
-        # Prepare update parameters
-        update_params = {"memory_id": update_data.memory_id}
+        # Mem0's update method expects a 'data' dict with the memory content
+        # The data dict should contain 'memory' key for content and optionally 'metadata'
+        data_dict = {}
         if update_data.content is not None:
-            update_params["content"] = update_data.content
+            data_dict["memory"] = update_data.content
         if update_data.metadata is not None:
-            update_params["metadata"] = update_data.metadata
+            data_dict["metadata"] = update_data.metadata
 
-        result = memory_instance.update(**update_params)
+        result = memory_instance.update(
+            memory_id=update_data.memory_id,
+            data=data_dict
+        )
 
         logger.info(f"Memory updated: {update_data.memory_id}")
 
