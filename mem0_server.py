@@ -331,38 +331,48 @@ async def search_memory(search: SearchInput) -> SearchResponse:
         )
 
     try:
-        results = memory_instance.search(
+        raw_results = memory_instance.search(
             query=search.query,
             user_id=search.user_id,
             limit=search.limit
         )
 
-        logger.info(f"Search for user {search.user_id}: {len(results) if results else 0} results")
+        # mem0ai returns a dict with 'results' key containing the actual list
+        if isinstance(raw_results, dict) and "results" in raw_results:
+            results = raw_results["results"]
+        elif isinstance(raw_results, list):
+            results = raw_results
+        else:
+            results = []
+
+        logger.info(f"Search for user {search.user_id}: {len(results)} results")
 
         # Format results
         formatted_results = []
-        if results:
-            for r in results:
-                memory_text = ""
-                score = 1.0
-                metadata = {}
+        for r in results:
+            memory_text = ""
+            score = 1.0
+            metadata = {}
+            memory_id = ""
 
-                if isinstance(r, dict):
-                    memory_text = r.get("memory", "")
-                    score = r.get("score", 0.0)
-                    metadata = r.get("metadata")
-                elif hasattr(r, "memory"): # It's an object
-                    memory_text = getattr(r, "memory", "")
-                    score = getattr(r, "score", 0.0)
-                    metadata = getattr(r, "metadata", None)
-                elif isinstance(r, str): # It's just a string
-                    memory_text = r
-                
-                formatted_results.append(SearchResult(
-                    memory=memory_text,
-                    score=score,
-                    metadata=metadata
-                ))
+            if isinstance(r, dict):
+                memory_id = r.get("id", "")
+                memory_text = r.get("memory", "")
+                score = r.get("score", 0.0)
+                metadata = r.get("metadata")
+            elif hasattr(r, "memory"): # It's an object
+                memory_id = getattr(r, "id", "")
+                memory_text = getattr(r, "memory", "")
+                score = getattr(r, "score", 0.0)
+                metadata = getattr(r, "metadata", None)
+            elif isinstance(r, str): # It's just a string
+                memory_text = r
+
+            formatted_results.append(SearchResult(
+                memory=memory_text,
+                score=score,
+                metadata=metadata
+            ))
 
         return SearchResponse(
             success=True,
