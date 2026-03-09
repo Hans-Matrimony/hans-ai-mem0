@@ -81,6 +81,7 @@ class MemoryListResponse(BaseModel):
 
 class SearchResult(BaseModel):
     """Single search result"""
+    id: Optional[str] = None
     memory: str
     score: float
     metadata: Optional[Dict[str, Any]] = None
@@ -369,6 +370,7 @@ async def search_memory(search: SearchInput) -> SearchResponse:
                 memory_text = r
 
             formatted_results.append(SearchResult(
+                id=memory_id,
                 memory=memory_text,
                 score=score,
                 metadata=metadata
